@@ -1,0 +1,323 @@
+---
+title: "viz_final_project"
+author: "Cianna Bedford-Petersen"
+date: "February 17, 2019"
+output: html_document
+---
+
+```{r plot 1}
+
+library(rio)
+library(tidyverse)
+library(colorblindr)
+library(ggridges)
+library(purrr)
+
+
+#import data
+pew <- import("./core_trends_survey.csv")
+
+#change response variable to a factor and give categorical response names
+pew$pial11 <- as.factor(recode(pew$pial11, "1"="Good Thing", "2"= "Bad Thing", "3"= "Some of Both", "8"= "Don't Know", "9"="Refused to Answer"))
+
+#ridgeline density plot
+ggplot(pew, aes(age, pial11)) +
+  geom_density_ridges(color = "white",
+                                alpha = 0.4,
+                                fill = "#003F9C")
+
+#how many are in each category
+pew %>% 
+  group_by(pial11) %>% 
+  dplyr::summarize(n=n())
+
+#there are only 10 in the refused to answer category so it is not a good representation to visualize
+pew2 <- pew %>% 
+  filter(pial11!="Refused to Answer")
+
+ggplot(pew2, aes(age, pial11)) +
+  geom_density_ridges(color = "white",
+                                alpha = 0.4,
+                                fill = "#003F9C")
+
+#put responses in an order that makes more sense to read
+pew2$pial11 <- factor(pew2$pial11, levels=c("Don't Know", "Bad Thing", "Some of Both", "Good Thing"))
+
+ggplot(pew2, aes(age, pial11)) +
+  geom_density_ridges(color = "white",
+                                alpha = 0.4,
+                                fill = "#003F9C")
+
+#chose a larger bandwith to show a peak for each distribution
+ggplot(pew2, aes(age, pial11)) +
+  geom_density_ridges(color = "white",
+                                alpha = 0.4,
+                                fill = "#003F9C",
+                                bandwidth=8)
+
+
+#clean up titles, axes, and colors
+gr <- ggplot(pew2, aes(age, pial11)) +
+  geom_density_ridges(color = "white",
+                                alpha = 0.4,
+                                fill = "#003F9C",
+                                bandwidth=8) +
+  labs(title="Adult Attitudes Towards the Internet", subtitle = "Would you say the internet has mostly been a...",
+         x="Age") +
+  scale_x_continuous(breaks=c(0,20,40,60,80,100,120), labels=c(0,20,40,60,80,100,120))+
+  theme_minimal()+
+  theme(axis.title.y=element_blank())
+gr
+
+#Add a line at the highest density point
+# Extract the data ggplot used to prepare the figure.
+# purrr::pluck is grabbing the "data" list from the list that
+# ggplot_build creates, and then extracting the first element of that list.
+ingredients <- ggplot_build(gr) %>% purrr::pluck("data", 1)
+
+# Pick the highest point. Could easily add quantiles or other features here.
+density_lines <- ingredients %>%
+  group_by(group) %>% filter(density == max(density)) %>% ungroup()
+
+#add to plot
+ggplot(pew2, aes(age, pial11)) +
+  geom_density_ridges(color = "white",
+                                alpha = 0.4,
+                                fill = "#003F9C",
+                                bandwidth=8) +
+  geom_segment(data = density_lines, 
+               aes(x = x, y = ymin, xend = x, 
+                   yend = ymin+density*scale*iscale)) +
+  geom_text(data = density_lines, 
+            aes(x = x, y = ymin + 0.5 *(density*scale*iscale),
+                label = round(x, 0)),
+            hjust = -0.4, vjust=.01)+
+  labs(title="Adult Attitudes Towards the Internet", subtitle = "Would you say the internet has mostly been a...",
+         x="Age") +
+  scale_x_continuous(breaks=c(0,20,40,60,80,100,120), labels=c(0,20,40,60,80,100,120))+
+  theme_minimal()+
+  theme(axis.title.y=element_blank())
+
+```
+
+```{r plot 2}
+
+#Participants were asked how frequently they use the internet, I am curious if how frequently a person uses the internet influences which social media platforms they are on 
+
+#tidy data
+pew_tidy <- pew %>% 
+  rename("Twitter"="web1a", "Instagram"="web1b", "Facebook"="web1c", "Snapchat"="web1d", "YouTube"="web1e",
+          "WhatsApp"="web1f", "Pinterest"="web1g", "LinkedIn"="web1h") %>% 
+  gather(platform, response, Twitter , Instagram, Facebook, Snapchat, YouTube, WhatsApp, Pinterest, LinkedIn) %>% 
+  select(respid, intfreq, platform, response) 
+
+#recode variable to have category names
+pew_tidy$intfreq <-as.factor(recode(pew_tidy$intfreq, "1"="Almost Constantly", "2"= "Several Times A Day", "3"= "About Once A Day", "4"= "Several Times A Week", "5"= "Less Than Several Times A Week", "8"= "Don't Know", "9"="Refused to Answer"))
+
+#filter to include just yes responses for each platform and exclude don't know and NA responses
+pew_yes <- pew_tidy %>% 
+  filter(response==1) %>% 
+  filter(intfreq!="Don't Know") %>% 
+  filter(intfreq!="Refused to Answer")
+  
+
+#plot- use of platforms by general internet usage level
+ggplot(pew_yes, aes(platform, response))+
+  geom_bar(stat="identity")+
+  coord_flip()+
+  facet_wrap(~intfreq)
+
+#Make bars proportions since our facets do not have equal sample sizes
+ggplot(pew_yes, aes(platform))+
+  geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+
+  coord_flip()+
+  facet_wrap(~intfreq)
+
+#right now our graph is calculating the percentage out of total responses, but often there are multiple responses per person. Instead we need to calculate a percentage out of total participants 
+
+#make new summary data set and join on unique count for each group
+freq_platform_count <- pew_yes %>% 
+  group_by(intfreq, platform) %>% 
+  dplyr::summarize(n=n())
+
+freq_ucount <- pew_yes %>% 
+  group_by(intfreq) %>% 
+  dplyr::summarize(n=n_distinct(respid))
+
+freq_platform_ucount <- left_join(freq_platform_count, freq_ucount, by="intfreq")
+
+#rename n variables to be more clear
+freq_platform_ucount <- rename(freq_platform_ucount, n_ind=n.x, group_n=n.y)
+
+
+#edit titles, add color, put all in 1 row, remove legend 
+ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))+
+  geom_bar(stat="identity")+
+  coord_flip()+
+  facet_wrap(~intfreq, nrow=1)+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title= "Percentage of Users on Platform by Frequency of Internet Usage", y= "Percentage of Users")+
+  theme_minimal()+
+  theme(axis.title.y = element_blank(), legend.title = element_blank(), legend.position="none")+
+  scale_fill_viridis_d() 
+  
+
+#change something that looks closer to increasing order for both factors 
+pew_yes$platform <- factor(pew_yes$platform, levels=c("WhatsApp", "Pinterest", "Twitter", "Snapchat", "LinkedIn", "Instagram", "Facebook", "YouTube"))
+
+pew_yes$intfreq <- factor(pew_yes$intfreq, levels=c("Almost Constantly", "Several Times A Day", "Several Times A Week", "Less Than Several Times A Week", "About Once A Day"))
+
+ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))+
+  geom_bar(stat="identity")+
+  coord_flip()+
+  facet_wrap(~intfreq, nrow=1)+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title= "Percentage of Users on Platform by Frequency of Internet Usage", y= "Percentage of Users")+
+  theme_minimal()+
+  theme(axis.title.y = element_blank(), legend.title = element_blank(), legend.position="none")+
+  scale_fill_viridis_d() 
+
+
+#Add text labels onto bars
+ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))+
+  geom_bar(stat="identity")+
+  geom_text(aes(label=scales::percent(round(((n_ind)/group_n),2)),hjust=0))+
+  coord_flip()+
+  facet_wrap(~intfreq, nrow=1)+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title= "Percentage of Users on Platform by Frequency of Overall Internet Usage", y= "Percentage of Users")+
+  theme_minimal()+
+  theme(axis.title.y = element_blank(), legend.title = element_blank(), legend.position="none", axis.text.y = 
+        element_text(size=15), plot.title = element_text(size=30), axis.title.x = element_text(size = 15), axis.text.x =  
+        element_text(size = 13), strip.text.x = element_text(size = 15))+
+  scale_fill_viridis_d() 
+
+  
+#put facets in descending order  
+```
+
+```{r plot 3}
+
+#Does the frequency of overall internet usage affect how many platforms a participant engages with?
+
+#summarize data
+ind_count <- pew_yes %>% 
+  group_by(respid, intfreq) %>% 
+  dplyr::summarize(total_platform=n())
+
+
+#make number of platforms into a categorical variable
+ind_count$total_platform <- factor(ind_count$total_platform)
+
+#plot by frequency group
+ggplot(ind_count, aes(total_platform))+
+  geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+
+  facet_wrap(~intfreq, nrow=1)+
+  coord_flip()+
+  scale_y_continuous(labels = scales::percent)+
+  theme_minimal()
+  
+
+#add titles and edit text size
+ggplot(ind_count, aes(total_platform))+
+  geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+
+  facet_wrap(~intfreq, nrow=1)+
+  coord_flip()+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title= "Number of Platforms Used By Frequency of Overall Internet Usage", y= "Percentage of Users", 
+        x="Number of Platforms Engaged With")+
+  theme_minimal()+
+  theme(legend.title = element_blank(), legend.position="none", axis.text.y = element_text(size=15),axis.text.x = 
+        element_text(size=12), plot.title =element_text(size=30), axis.title.x = element_text(size = 15), axis.title.y = 
+        element_text(size = 15),strip.text.x = element_text(size = 15))
+ 
+
+#add fill by facet to focus the viewers attention to each compare values within a facet
+ggplot(ind_count, aes(total_platform, fill=intfreq))+
+  geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+
+  facet_wrap(~intfreq, nrow=1)+
+  coord_flip()+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title= "Number of Platforms Used By Frequency of Overall Internet Usage", y= "Percentage of Users", 
+        x="Number of Platforms Engaged With")+
+  theme_minimal()+
+  theme(legend.title = element_blank(), legend.position="none", axis.text.y = element_text(size=15),axis.text.x = 
+        element_text(size=12), plot.title =element_text(size=30), axis.title.x = element_text(size = 15), axis.title.y = 
+        element_text(size = 15),strip.text.x = element_text(size = 15))+
+  scale_fill_viridis_d()
+
+#This plot shows that people who do not use the internet very often are likely to engage with 1 or 2 social media platforms
+
+#mean number of platforms engaged with by frequency of internet use, may want to incorporate this into the plot later
+mean_platform <- ind_count %>% 
+  group_by(intfreq) %>% 
+  dplyr::summarize(mean_platform=mean(total_platform))
+mean_platform
+```
+
+```{r plot 4}
+
+#For participants that only engage with one social media platform, which platform do they choose?
+
+#filter for people that only engage with one platform
+one_plat <- ind_count %>% 
+  filter(total_platform==1)
+
+#join data with name of platform to id for single platform users 
+one_plat2 <- left_join(one_plat, pew_yes)
+
+#bar plot of preferred platform for single platform users
+ggplot(one_plat2, aes(platform, fill=platform))+
+  geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+
+  coord_flip()+
+  scale_y_continuous(labels = scales::percent)+
+  theme_minimal()+
+  theme(legend.title = element_blank(), legend.position="none", axis.text.y = element_text(size=15),axis.text.x = 
+        element_text(size=12), plot.title =element_text(size=30), axis.title.x = element_blank(), axis.title.y = 
+        element_text(size = 15))+
+  scale_fill_viridis_d() 
+
+
+#this shows a pretty clear message that YouTube and Facebook are dominant for single platform users. However, since we just made a chart similar to this for different information, maybe this is a good candidate for a waffle plot. A waffle plot might also help us better visualize the difference between lesser used platforms like Snapchat and Twitter
+
+
+library(waffle)
+
+#make summary data by platform for waffle plot. Put in descending order so lesser used platforms are closer to the legend. Play around with row number. 
+
+waffle <- one_plat2 %>%
+  ungroup() %>% 
+  group_by(platform) %>% 
+  dplyr::summarize(n=n()) %>% 
+  arrange(desc(n))
+
+waffle(waffle, rows = 11)
+
+#make proportion out of 100 so it is more interpretible 
+waffle_p <- one_plat2 %>%
+  ungroup() %>% 
+  group_by(platform) %>% 
+  dplyr::summarize(n=n()/220*100) %>% 
+  arrange(desc(n))
+
+#round to make 100 boxes
+waffle_pr <- waffle_p %>% mutate_if(is.numeric, round, 0)
+
+#plot and add title 
+waffle(waffle_pr, rows = 10, title="Chosen Social Media for Single Platform Users")
+
+
+#Add computer glyphs and title 
+library(extrafont)
+install.packages("extrafont")
+
+font_import()
+# check that Font Awesome is imported
+fonts()[grep("Awesome", fonts())]
+
+
+waffle(waffle_pr, rows = 10, title="Chosen Social Media for Single Platform Users")
+
+```
+
+
