@@ -11,11 +11,12 @@ library(rio)
 library(tidyverse)
 library(colorblindr)
 library(ggridges)
-library(purrr)
 
 
 #import data
 pew <- import("./core_trends_survey.csv")
+
+#participants were asked if overall, they consider the internet to be a good or bad thing for society. I am curious if the distribution of ages varies by response. I would predict that older participants are more likely to say that the internet is a bad thing for society than younger participants. 
 
 #change response variable to a factor and give categorical response names
 pew$pial11 <- as.factor(recode(pew$pial11, "1"="Good Thing", "2"= "Bad Thing", "3"= "Some of Both", "8"= "Don't Know", "9"="Refused to Answer"))
@@ -26,7 +27,7 @@ ggplot(pew, aes(age, pial11)) +
                                 alpha = 0.4,
                                 fill = "#003F9C")
 
-#how many are in each category
+#how many are in each response category?
 pew %>% 
   group_by(pial11) %>% 
   dplyr::summarize(n=n())
@@ -48,7 +49,7 @@ ggplot(pew2, aes(age, pial11)) +
                                 alpha = 0.4,
                                 fill = "#003F9C")
 
-#chose a larger bandwith to show a peak for each distribution
+#chose a larger bandwith to show a clearer peak for each distribution
 ggplot(pew2, aes(age, pial11)) +
   geom_density_ridges(color = "white",
                                 alpha = 0.4,
@@ -163,9 +164,9 @@ ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))
   
 
 #change something that looks closer to increasing order for both factors 
-pew_yes$platform <- factor(pew_yes$platform, levels=c("WhatsApp", "Pinterest", "Twitter", "Snapchat", "LinkedIn", "Instagram", "Facebook", "YouTube"))
+freq_platform_ucount$platform <- factor(freq_platform_ucount$platform, levels=c("WhatsApp", "Pinterest", "Twitter", "Snapchat", "LinkedIn", "Instagram", "Facebook", "YouTube"))
 
-pew_yes$intfreq <- factor(pew_yes$intfreq, levels=c("Almost Constantly", "Several Times A Day", "Several Times A Week", "Less Than Several Times A Week", "About Once A Day"))
+freq_platform_ucount$intfreq <- factor(freq_platform_ucount$intfreq, levels=c("Almost Constantly", "Several Times A Day", "Several Times A Week", "Less Than Several Times A Week", "About Once A Day"))
 
 ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))+
   geom_bar(stat="identity")+
@@ -192,8 +193,10 @@ ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))
         element_text(size = 13), strip.text.x = element_text(size = 15))+
   scale_fill_viridis_d() 
 
+#not sure if the text labels are very helpful here 
+
+#from this graph we can see that youtube and facebook are pretty dominant across all frequencies of general internet usage. For those who only use the internet once a day there is a surprisingly high percentage of pinterest users, suggesting it may serve a purpose independent of other social media platforms. 
   
-#put facets in descending order  
 ```
 
 ```{r plot 3}
@@ -307,9 +310,8 @@ waffle_pr <- waffle_p %>% mutate_if(is.numeric, round, 0)
 waffle(waffle_pr, rows = 10, title="Chosen Social Media for Single Platform Users")
 
 
-#Add computer glyphs and title 
+#Add computer glyphs and title, this is not working yet, I am still playing around with it 
 library(extrafont)
-install.packages("extrafont")
 
 font_import()
 # check that Font Awesome is imported
