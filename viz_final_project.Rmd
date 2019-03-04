@@ -74,6 +74,9 @@ gr
 # Extract the data ggplot used to prepare the figure.
 # purrr::pluck is grabbing the "data" list from the list that
 # ggplot_build creates, and then extracting the first element of that list.
+
+
+
 ingredients <- ggplot_build(gr) %>% purrr::pluck("data", 1)
 
 # Pick the highest point. Could easily add quantiles or other features here.
@@ -97,11 +100,16 @@ ggplot(pew2, aes(age, pial11)) +
          x="Age") +
   scale_x_continuous(breaks=c(0,20,40,60,80,100,120), labels=c(0,20,40,60,80,100,120))+
   theme_minimal()+
-  theme(axis.title.y=element_blank())
+  theme(axis.title.y=element_blank()) 
 
+
+# Yufei: I really like the line you added and the use of pluck function seem to be very useful in many ways. I have learned that! The final version of the plot looks very nice!
+
+# Yufei: I was wondering if it is possible to also add a line for the second high peek within each condition. I am very curious about this info.
 ```
 
-```{r plot 2}
+```{r plot 2, fig.width=9}
+# Yufei: The text on the final plot seems to have some overlaps. Hope the changes to the fig width would help.
 
 #Participants were asked how frequently they use the internet, I am curious if how frequently a person uses the internet influences which social media platforms they are on 
 
@@ -181,11 +189,11 @@ ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))
 
 #Add text labels onto bars
 ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))+
-  geom_bar(stat="identity")+
-  geom_text(aes(label=scales::percent(round(((n_ind)/group_n),2)),hjust=0))+
+  geom_bar(stat="identity", width = 0.4)+ # Yufei: I just feel the narrower bars could make the plot not that crowded!
+  geom_text(aes(label=scales::percent(round(((n_ind)/group_n),2)),hjust=0))+ # Yufei: I like these labels very much. Really helpful for understanding!
   coord_flip()+
   facet_wrap(~intfreq, nrow=1)+
-  scale_y_continuous(labels = scales::percent)+
+  scale_y_continuous(labels = scales::percent)+ 
   labs(title= "Percentage of Users on Platform by Frequency of Overall Internet Usage", y= "Percentage of Users")+
   theme_minimal()+
   theme(axis.title.y = element_blank(), legend.title = element_blank(), legend.position="none", axis.text.y = 
@@ -199,8 +207,8 @@ ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))
   
 ```
 
-```{r plot 3}
-
+```{r plot 3, fig.width=9}
+# Yufei: The text on the final plot seems to have some overlaps. Hope the changes to the fig width would help.
 #Does the frequency of overall internet usage affect how many platforms a participant engages with?
 
 #summarize data
@@ -237,7 +245,7 @@ ggplot(ind_count, aes(total_platform))+
 
 #add fill by facet to focus the viewers attention to each compare values within a facet
 ggplot(ind_count, aes(total_platform, fill=intfreq))+
-  geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+
+  geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]), width = 0.4)+ # Yufei: I just feel the narrower bars could make the plot not that crowded!
   facet_wrap(~intfreq, nrow=1)+
   coord_flip()+
   scale_y_continuous(labels = scales::percent)+
@@ -256,6 +264,8 @@ mean_platform <- ind_count %>%
   group_by(intfreq) %>% 
   dplyr::summarize(mean_platform=mean(total_platform))
 mean_platform
+
+# This plot is also very pretty and clearly communicate the information! I like the "%" you added to the x axis.
 ```
 
 ```{r plot 4}
@@ -320,6 +330,8 @@ fonts()[grep("Awesome", fonts())]
 
 waffle(waffle_pr, rows = 10, title="Chosen Social Media for Single Platform Users")
 
+
+# Yufei: The final waffle graph is so cool! Your final decision to make it as a square made it even prettier and more straightforward to understand. The font and the text size are awesome too! So perfect and I don't have any suggestions.
 ```
 
 
