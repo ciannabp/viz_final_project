@@ -5,21 +5,46 @@ date: "February 17, 2019"
 output: html_document
 ---
 
-```{r plot 1}
+## Teresa's peer review
+
+I really appreciate you showed iterations of plots and used commentary to explain the purposes/hypotheses of each data visualization.  Your codes are easy to follow along and selection of plots is to the point. You are a good story teller! The document is reproducible expect that for some reason I can't get waffle charts working. The error menssage was "Error in FUN(X[[i]], ...) : (list) object cannot be coerced to type 'double'".
+
+As for styling, I placed several spaces around all infix operators (=, +, -, <-, etc.) in your codes and broke down couple long codes into different lines. You could use this [style guide](http://adv-r.had.co.nz/Style.html) from Hadley Wickham as a reference.   
+
+Thanks to your code, now I know how to access the data of ggplot object, I'll defintely play around with it!
+
+
+```{r setup, include = FALSE}
+
+# I'd suggest to include this setup chuck for global setting, including all libraries used in the document. 
 
 library(rio)
 library(tidyverse)
 library(colorblindr)
 library(ggridges)
+library(waffle)
+knitr::opts_chunk$set(warning = FALSE,
+                      message = FALSE,
+                      error = TRUE
+                      )
+
+```
+
+
+```{r plot 1}
+
 
 
 #import data
 pew <- import("./core_trends_survey.csv")
-
+str(pew)
 #participants were asked if overall, they consider the internet to be a good or bad thing for society. I am curious if the distribution of ages varies by response. I would predict that older participants are more likely to say that the internet is a bad thing for society than younger participants. 
 
 #change response variable to a factor and give categorical response names
-pew$pial11 <- as.factor(recode(pew$pial11, "1"="Good Thing", "2"= "Bad Thing", "3"= "Some of Both", "8"= "Don't Know", "9"="Refused to Answer"))
+pew$pial11 <- as.factor(recode(pew$pial11, 
+                               "1"="Good Thing", "2"= "Bad Thing", 
+                               "3"= "Some of Both", "8"= "Don't Know", 
+                               "9"="Refused to Answer"))
 
 #ridgeline density plot
 ggplot(pew, aes(age, pial11)) +
@@ -27,10 +52,25 @@ ggplot(pew, aes(age, pial11)) +
                                 alpha = 0.4,
                                 fill = "#003F9C")
 
+# The above two code chunks can be combined together:------------
+
+# pew %>% 
+#   mutate(pial11 = factor(pial11, levels = c("1", "2", "3", "8", "9"),
+#                          labels = c("Good Thing","Bad Thing",
+#                                     "Some of Both", "Don't Know",
+#                                     "Refused to Answer"))) %>%  
+#   ggplot(aes(age, pial11)) +
+#   geom_density_ridges(color = "white",
+#                                 alpha = 0.4,
+#                                 fill = "#003F9C")
+#   
+# --------------------------------------------------------------
+
+
 #how many are in each response category?
 pew %>% 
-  group_by(pial11) %>% 
-  dplyr::summarize(n=n())
+  count(pial11) # count() calls in group_by() before and ungroup() after
+
 
 #there are only 10 in the refused to answer category so it is not a good representation to visualize
 pew2 <- pew %>% 
@@ -42,7 +82,8 @@ ggplot(pew2, aes(age, pial11)) +
                                 fill = "#003F9C")
 
 #put responses in an order that makes more sense to read
-pew2$pial11 <- factor(pew2$pial11, levels=c("Don't Know", "Bad Thing", "Some of Both", "Good Thing"))
+pew2$pial11 <- factor(pew2$pial11, 
+                      levels=c("Don't Know", "Bad Thing", "Some of Both", "Good Thing"))
 
 ggplot(pew2, aes(age, pial11)) +
   geom_density_ridges(color = "white",
@@ -54,7 +95,7 @@ ggplot(pew2, aes(age, pial11)) +
   geom_density_ridges(color = "white",
                                 alpha = 0.4,
                                 fill = "#003F9C",
-                                bandwidth=8)
+                                bandwidth = 8)
 
 
 #clean up titles, axes, and colors
@@ -62,13 +103,41 @@ gr <- ggplot(pew2, aes(age, pial11)) +
   geom_density_ridges(color = "white",
                                 alpha = 0.4,
                                 fill = "#003F9C",
-                                bandwidth=8) +
-  labs(title="Adult Attitudes Towards the Internet", subtitle = "Would you say the internet has mostly been a...",
-         x="Age") +
+                                bandwidth = 8) +
+  labs(title="Adult Attitudes Towards the Internet", 
+       subtitle = "Would you say the internet has mostly been a...",
+       x="Age") +
   scale_x_continuous(breaks=c(0,20,40,60,80,100,120), labels=c(0,20,40,60,80,100,120))+
   theme_minimal()+
   theme(axis.title.y=element_blank())
 gr
+
+# -------------------------------
+# For my personal perference, I like to include dplyr codes and ggplot2 codes in one chunk.
+# I prefer creating as less items in the environment as possible and use the least amount of coding to get to the final product, like what it shows below.
+
+pew <- import("./core_trends_survey.csv")
+pew %>% 
+  mutate(pial11 = factor(pial11, levels = c("8", "2", "3", "1", "9"),
+                         labels = c("Don't Know","Bad Thing",
+                                    "Some of Both", "Good Thing",
+                                    "Refused to Answer"))) %>%
+  filter(pial11 != "Refused to Answer") %>% 
+  ggplot(aes(age, pial11)) +
+  geom_density_ridges(color = "white",
+                      alpha = 0.4,
+                      fill = "#003F9C", 
+                      bandwidth = 8) +
+  labs(title="Adult Attitudes Towards the Internet", 
+       subtitle = "Would you say the internet has mostly been a...",
+       x="Age") +
+  scale_x_continuous(breaks=seq(0, 120, 20), 
+                     labels=seq(0, 120, 20)) +
+  theme_minimal() +
+  theme(axis.title.y=element_blank())
+
+# ---------------------------------------------------------------------
+
 
 #Add a line at the highest density point
 # Extract the data ggplot used to prepare the figure.
@@ -80,23 +149,27 @@ ingredients <- ggplot_build(gr) %>% purrr::pluck("data", 1)
 density_lines <- ingredients %>%
   group_by(group) %>% filter(density == max(density)) %>% ungroup()
 
+# Wow! I didn't know those data behind ggplot object is accesible. Thank you! 
+
 #add to plot
 ggplot(pew2, aes(age, pial11)) +
   geom_density_ridges(color = "white",
                                 alpha = 0.4,
                                 fill = "#003F9C",
-                                bandwidth=8) +
+                                bandwidth =8) +
   geom_segment(data = density_lines, 
                aes(x = x, y = ymin, xend = x, 
-                   yend = ymin+density*scale*iscale)) +
+                   yend = ymin + density*scale*iscale)) +
   geom_text(data = density_lines, 
-            aes(x = x, y = ymin + 0.5 *(density*scale*iscale),
+            aes(x = x, 
+                y = ymin + 0.5 *(density*scale*iscale),
                 label = round(x, 0)),
-            hjust = -0.4, vjust=.01)+
-  labs(title="Adult Attitudes Towards the Internet", subtitle = "Would you say the internet has mostly been a...",
-         x="Age") +
-  scale_x_continuous(breaks=c(0,20,40,60,80,100,120), labels=c(0,20,40,60,80,100,120))+
-  theme_minimal()+
+                hjust = -0.4, vjust = .01) +
+  labs(title="Adult Attitudes Towards the Internet", 
+       subtitle = "Would you say the internet has mostly been a...",
+       x="Age") +
+  scale_x_continuous(breaks = seq(0, 120, 20), labels = seq(0, 120, 20)) +
+  theme_minimal() +
   theme(axis.title.y=element_blank())
 
 ```
@@ -107,97 +180,168 @@ ggplot(pew2, aes(age, pial11)) +
 
 #tidy data
 pew_tidy <- pew %>% 
-  rename("Twitter"="web1a", "Instagram"="web1b", "Facebook"="web1c", "Snapchat"="web1d", "YouTube"="web1e",
-          "WhatsApp"="web1f", "Pinterest"="web1g", "LinkedIn"="web1h") %>% 
-  gather(platform, response, Twitter , Instagram, Facebook, Snapchat, YouTube, WhatsApp, Pinterest, LinkedIn) %>% 
+  rename("Twitter"="web1a", "Instagram"="web1b", 
+         "Facebook"="web1c", "Snapchat"="web1d", 
+         "YouTube"="web1e", "WhatsApp"="web1f", 
+         "Pinterest"="web1g", "LinkedIn"="web1h") %>% 
+  gather(platform, response, 
+         Twitter , Instagram, Facebook, Snapchat, YouTube, WhatsApp, Pinterest, LinkedIn) %>% 
   select(respid, intfreq, platform, response) 
 
 #recode variable to have category names
-pew_tidy$intfreq <-as.factor(recode(pew_tidy$intfreq, "1"="Almost Constantly", "2"= "Several Times A Day", "3"= "About Once A Day", "4"= "Several Times A Week", "5"= "Less Than Several Times A Week", "8"= "Don't Know", "9"="Refused to Answer"))
+pew_tidy$intfreq <-as.factor(recode(pew_tidy$intfreq, 
+                                    "1"="Almost Constantly", "2"= "Several Times A Day", "3"= "About Once A Day", "4"= "Several Times A Week", "5"= "Less Than Several Times A Week", "8"= "Don't Know", "9"="Refused to Answer"))
+
+# You could use mutate(intfreq = factor(intfreq, levels = (), labels = )) here so it's easy to combine codes with other code chuncks using tidyverse. 
 
 #filter to include just yes responses for each platform and exclude don't know and NA responses
 pew_yes <- pew_tidy %>% 
-  filter(response==1) %>% 
-  filter(intfreq!="Don't Know") %>% 
-  filter(intfreq!="Refused to Answer")
+  filter(response == 1,
+         intfreq != "Don't Know",
+         intfreq != "Refused to Answer") 
   
 
 #plot- use of platforms by general internet usage level
-ggplot(pew_yes, aes(platform, response))+
-  geom_bar(stat="identity")+
-  coord_flip()+
+ggplot(pew_yes, aes(platform, response)) +
+  geom_bar(stat="identity") +
+  coord_flip() +
   facet_wrap(~intfreq)
 
 #Make bars proportions since our facets do not have equal sample sizes
-ggplot(pew_yes, aes(platform))+
-  geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+
-  coord_flip()+
+ggplot(pew_yes, aes(platform)) +
+  geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..])) +
+  coord_flip() +
   facet_wrap(~intfreq)
+
+# -------This could be an alternative way to change bar from identity to proportion-----
+
+ggplot(pew_yes, aes(x = platform, group = intfreq))+
+  geom_bar(aes(y = ..prop..), stat="count") +
+  scale_y_continuous(labels=scales::percent) +
+  coord_flip() +
+  facet_wrap(~intfreq)
+# -------------------------------------------------------------------
+
 
 #right now our graph is calculating the percentage out of total responses, but often there are multiple responses per person. Instead we need to calculate a percentage out of total participants 
 
 #make new summary data set and join on unique count for each group
 freq_platform_count <- pew_yes %>% 
   group_by(intfreq, platform) %>% 
-  dplyr::summarize(n=n())
+  dplyr::summarize(n = n()) # could use count() instead 
 
 freq_ucount <- pew_yes %>% 
   group_by(intfreq) %>% 
-  dplyr::summarize(n=n_distinct(respid))
+  dplyr::summarize(n = n_distinct(respid)) 
 
-freq_platform_ucount <- left_join(freq_platform_count, freq_ucount, by="intfreq")
+freq_platform_ucount <- left_join(freq_platform_count, freq_ucount, by ="intfreq")
 
 #rename n variables to be more clear
-freq_platform_ucount <- rename(freq_platform_ucount, n_ind=n.x, group_n=n.y)
+freq_platform_ucount <- rename(freq_platform_ucount, n_ind = n.x, group_n = n.y)
 
+#-------The below code can create "freq_platform_ucount" as well without chopping codes in to different chunks --------------
+pew_yes %>% 
+  group_by(intfreq, platform) %>% 
+  mutate(n_ind = n()) %>% 
+  group_by(intfreq) %>% 
+  mutate(group_n = n_distinct(respid)) %>% 
+  select(intfreq, platform, n_ind, group_n) %>% 
+  distinct() %>% View()
+#-----------------------------------------------
 
 #edit titles, add color, put all in 1 row, remove legend 
-ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))+
-  geom_bar(stat="identity")+
-  coord_flip()+
-  facet_wrap(~intfreq, nrow=1)+
-  scale_y_continuous(labels = scales::percent)+
-  labs(title= "Percentage of Users on Platform by Frequency of Internet Usage", y= "Percentage of Users")+
-  theme_minimal()+
-  theme(axis.title.y = element_blank(), legend.title = element_blank(), legend.position="none")+
+ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill = intfreq))+
+  geom_bar(stat="identity") +
+  coord_flip() +
+  facet_wrap(~intfreq, nrow=1) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title= "Percentage of Users on Platform by Frequency of Internet Usage", 
+       y= "Percentage of Users")+
+  theme_minimal() +
+  theme(axis.title.y = element_blank(), 
+        legend.title = element_blank(), 
+        legend.position="none")+
   scale_fill_viridis_d() 
   
 
 #change something that looks closer to increasing order for both factors 
-freq_platform_ucount$platform <- factor(freq_platform_ucount$platform, levels=c("WhatsApp", "Pinterest", "Twitter", "Snapchat", "LinkedIn", "Instagram", "Facebook", "YouTube"))
+freq_platform_ucount$platform <- factor(freq_platform_ucount$platform, 
+                                        levels=c("WhatsApp", "Pinterest", 
+                                                 "Twitter", "Snapchat", 
+                                                 "LinkedIn", "Instagram", 
+                                                 "Facebook", "YouTube"))
 
-freq_platform_ucount$intfreq <- factor(freq_platform_ucount$intfreq, levels=c("Almost Constantly", "Several Times A Day", "Several Times A Week", "Less Than Several Times A Week", "About Once A Day"))
+freq_platform_ucount$intfreq <- factor(freq_platform_ucount$intfreq, 
+                                       levels=c("Almost Constantly", 
+                                                "Several Times A Day", 
+                                                "Several Times A Week", 
+                                                "Less Than Several Times A Week", 
+                                                "About Once A Day"))
 
-ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))+
-  geom_bar(stat="identity")+
-  coord_flip()+
-  facet_wrap(~intfreq, nrow=1)+
-  scale_y_continuous(labels = scales::percent)+
-  labs(title= "Percentage of Users on Platform by Frequency of Internet Usage", y= "Percentage of Users")+
-  theme_minimal()+
-  theme(axis.title.y = element_blank(), legend.title = element_blank(), legend.position="none")+
+ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill = intfreq)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  facet_wrap(~intfreq, nrow = 1) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Percentage of Users on Platform by Frequency of Internet Usage", 
+       y = "Percentage of Users") +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(), 
+        legend.title = element_blank(), 
+        legend.position="none") +
   scale_fill_viridis_d() 
 
 
 #Add text labels onto bars
-ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))+
-  geom_bar(stat="identity")+
-  geom_text(aes(label=scales::percent(round(((n_ind)/group_n),2)),hjust=0))+
-  coord_flip()+
-  facet_wrap(~intfreq, nrow=1)+
-  scale_y_continuous(labels = scales::percent)+
-  labs(title= "Percentage of Users on Platform by Frequency of Overall Internet Usage", y= "Percentage of Users")+
-  theme_minimal()+
-  theme(axis.title.y = element_blank(), legend.title = element_blank(), legend.position="none", axis.text.y = 
-        element_text(size=15), plot.title = element_text(size=30), axis.title.x = element_text(size = 15), axis.text.x =  
-        element_text(size = 13), strip.text.x = element_text(size = 15))+
+ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=scales::percent(round(((n_ind)/group_n),2)),hjust=0)) +
+  coord_flip() +
+  facet_wrap(~intfreq, nrow=1) +
+  scale_y_continuous(labels = scales::percent) + # tyr use percent_format to avoid decimal
+  labs(title= "Percentage of Users on Platform by Frequency of Overall Internet Usage", 
+       y= "Percentage of Users") +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(), 
+        legend.title = element_blank(), 
+        legend.position="none", 
+        axis.text.y = element_text(size=15), 
+        plot.title = element_text(size=30), 
+        axis.title.x = element_text(size = 15), 
+        axis.text.x =  element_text(size = 13), 
+        strip.text.x = element_text(size = 15))+
   scale_fill_viridis_d() 
 
 #not sure if the text labels are very helpful here 
 
+# I agree with you that labeling all value onto polt may not provide helpful information.
+# Or you could add only couple texts of platforms that you want to highlight 
+
 #from this graph we can see that youtube and facebook are pretty dominant across all frequencies of general internet usage. For those who only use the internet once a day there is a surprisingly high percentage of pinterest users, suggesting it may serve a purpose independent of other social media platforms. 
-  
+
+
+# I really like you scientifically analyzed the data and tried different visualizations to get menssage delivered without counfounding factors. One thing I'd suggest here is to change fig.height or fig.width or spacing so the texts won't overlap each other. I replicated the plot with adjusted figure ratio below.
 ```
+
+```{r fig.height=10, fig.width= 30}
+
+ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill = intfreq)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label=scales::percent(round(((n_ind)/group_n),2)),hjust = -0.5)) +
+  coord_flip() +
+  facet_wrap(~intfreq, nrow = 1) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) + 
+  labs(title= "Percentage of Users on Platform by Frequency of Overall Internet Usage", 
+       y= "Percentage of Users") +
+  theme_minimal(base_size = 25) +
+  theme(axis.title.y = element_blank(), 
+        legend.title = element_blank(), 
+        legend.position="none",
+        panel.spacing = unit(3, "lines")) +
+  scale_fill_viridis_d() 
+
+```
+
 
 ```{r plot 3}
 
@@ -213,11 +357,11 @@ ind_count <- pew_yes %>%
 ind_count$total_platform <- factor(ind_count$total_platform)
 
 #plot by frequency group
-ggplot(ind_count, aes(total_platform))+
+ggplot(ind_count, aes(total_platform)) +
   geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+
-  facet_wrap(~intfreq, nrow=1)+
-  coord_flip()+
-  scale_y_continuous(labels = scales::percent)+
+  facet_wrap(~intfreq, nrow=1) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
   theme_minimal()
   
 
@@ -227,26 +371,37 @@ ggplot(ind_count, aes(total_platform))+
   facet_wrap(~intfreq, nrow=1)+
   coord_flip()+
   scale_y_continuous(labels = scales::percent)+
-  labs(title= "Number of Platforms Used By Frequency of Overall Internet Usage", y= "Percentage of Users", 
-        x="Number of Platforms Engaged With")+
-  theme_minimal()+
-  theme(legend.title = element_blank(), legend.position="none", axis.text.y = element_text(size=15),axis.text.x = 
-        element_text(size=12), plot.title =element_text(size=30), axis.title.x = element_text(size = 15), axis.title.y = 
-        element_text(size = 15),strip.text.x = element_text(size = 15))
+  labs(title= "Number of Platforms Used By Frequency of Overall Internet Usage", 
+       y= "Percentage of Users", 
+       x="Number of Platforms Engaged With")+
+  theme_minimal() +
+  theme(legend.title = element_blank(), 
+        legend.position="none", 
+        axis.text.y = element_text(size=15),
+        axis.text.x = element_text(size=12), 
+        plot.title =element_text(size=30), 
+        axis.title.x = element_text(size = 15), 
+        axis.title.y = element_text(size = 15),
+        strip.text.x = element_text(size = 15))
  
 
 #add fill by facet to focus the viewers attention to each compare values within a facet
-ggplot(ind_count, aes(total_platform, fill=intfreq))+
-  geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+
-  facet_wrap(~intfreq, nrow=1)+
+ggplot(ind_count, aes(total_platform, fill=intfreq)) +
+  geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..])) +
+  facet_wrap(~intfreq, nrow = 1) +
   coord_flip()+
-  scale_y_continuous(labels = scales::percent)+
-  labs(title= "Number of Platforms Used By Frequency of Overall Internet Usage", y= "Percentage of Users", 
-        x="Number of Platforms Engaged With")+
-  theme_minimal()+
-  theme(legend.title = element_blank(), legend.position="none", axis.text.y = element_text(size=15),axis.text.x = 
-        element_text(size=12), plot.title =element_text(size=30), axis.title.x = element_text(size = 15), axis.title.y = 
-        element_text(size = 15),strip.text.x = element_text(size = 15))+
+  scale_y_continuous(labels = scales::percent) +
+  labs(title= "Number of Platforms Used By Frequency of Overall Internet Usage", 
+       y= "Percentage of Users", 
+       x="Number of Platforms Engaged With") +
+  theme_minimal() +
+  theme(legend.title = element_blank(), 
+        legend.position="none", 
+        axis.text.y = element_text(size=15),
+        axis.text.x = element_text(size=12), 
+        plot.title =element_text(size=30), 
+        axis.title.x = element_text(size = 15), 
+        axis.title.y = element_text(size = 15),strip.text.x = element_text(size = 15))+
   scale_fill_viridis_d()
 
 #This plot shows that people who do not use the internet very often are likely to engage with 1 or 2 social media platforms
@@ -256,6 +411,8 @@ mean_platform <- ind_count %>%
   group_by(intfreq) %>% 
   dplyr::summarize(mean_platform=mean(total_platform))
 mean_platform
+
+# The texts of facet title, x-axis are overlaped. You might want to change text size or fig.width/fi.height.
 ```
 
 ```{r plot 4}
@@ -264,27 +421,31 @@ mean_platform
 
 #filter for people that only engage with one platform
 one_plat <- ind_count %>% 
-  filter(total_platform==1)
+  filter(total_platform == 1)
 
 #join data with name of platform to id for single platform users 
 one_plat2 <- left_join(one_plat, pew_yes)
 
 #bar plot of preferred platform for single platform users
-ggplot(one_plat2, aes(platform, fill=platform))+
+ggplot(one_plat2, aes(platform, fill = platform))+
   geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+
   coord_flip()+
-  scale_y_continuous(labels = scales::percent)+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1))+
   theme_minimal()+
-  theme(legend.title = element_blank(), legend.position="none", axis.text.y = element_text(size=15),axis.text.x = 
-        element_text(size=12), plot.title =element_text(size=30), axis.title.x = element_blank(), axis.title.y = 
-        element_text(size = 15))+
+  theme(legend.title = element_blank(), 
+        legend.position="none", 
+        axis.text.y = element_text(size=15),
+        axis.text.x = element_text(size=12), 
+        plot.title = element_text(size=30), 
+        axis.title.x = element_blank(), 
+        axis.title.y = element_text(size = 15))+
   scale_fill_viridis_d() 
 
 
 #this shows a pretty clear message that YouTube and Facebook are dominant for single platform users. However, since we just made a chart similar to this for different information, maybe this is a good candidate for a waffle plot. A waffle plot might also help us better visualize the difference between lesser used platforms like Snapchat and Twitter
 
 
-library(waffle)
+
 
 #make summary data by platform for waffle plot. Put in descending order so lesser used platforms are closer to the legend. Play around with row number. 
 
@@ -313,7 +474,7 @@ waffle(waffle_pr, rows = 10, title="Chosen Social Media for Single Platform User
 #Add computer glyphs and title, this is not working yet, I am still playing around with it 
 library(extrafont)
 
-font_import()
+# font_import()
 # check that Font Awesome is imported
 fonts()[grep("Awesome", fonts())]
 
