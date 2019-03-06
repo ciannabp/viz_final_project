@@ -36,6 +36,8 @@ pew %>%
 pew2 <- pew %>% 
   filter(pial11!="Refused to Answer")
 
+#BC: Nice decision, totally agree! Elimnates unnecessary information and reduces cognitive load when viewing the graph.
+
 ggplot(pew2, aes(age, pial11)) +
   geom_density_ridges(color = "white",
                                 alpha = 0.4,
@@ -65,16 +67,20 @@ gr <- ggplot(pew2, aes(age, pial11)) +
                                 bandwidth=8) +
   labs(title="Adult Attitudes Towards the Internet", subtitle = "Would you say the internet has mostly been a...",
          x="Age") +
-  scale_x_continuous(breaks=c(0,20,40,60,80,100,120), labels=c(0,20,40,60,80,100,120))+
+  scale_x_continuous(breaks=c(0,20,40,60,80,100), labels=c(0,20,40,60,80,100))+
   theme_minimal()+
   theme(axis.title.y=element_blank())
 gr
+
+#BC: I like your idea to include more axis labels. Since we're talking about age, I agree that the default labeling width of 40 years is too high. Since the max age is 99, one suggestion might be to limit your x axis to 100 (see above). 
 
 #Add a line at the highest density point
 # Extract the data ggplot used to prepare the figure.
 # purrr::pluck is grabbing the "data" list from the list that
 # ggplot_build creates, and then extracting the first element of that list.
 ingredients <- ggplot_build(gr) %>% purrr::pluck("data", 1)
+
+#BC: so cool, thanks for teaching me these functions! These seem super useful. 
 
 # Pick the highest point. Could easily add quantiles or other features here.
 density_lines <- ingredients %>%
@@ -95,10 +101,11 @@ ggplot(pew2, aes(age, pial11)) +
             hjust = -0.4, vjust=.01)+
   labs(title="Adult Attitudes Towards the Internet", subtitle = "Would you say the internet has mostly been a...",
          x="Age") +
-  scale_x_continuous(breaks=c(0,20,40,60,80,100,120), labels=c(0,20,40,60,80,100,120))+
+  scale_x_continuous(breaks=c(0,20,40,60,80,100), labels=c(0,20,40,60,80,100))+
   theme_minimal()+
   theme(axis.title.y=element_blank())
 
+#BC: Again, limiting x axis to 100 here. I really like your idea to label the highest density point for each of the distributions. It makes it really easy to see that the clearest age-related differences in attitudes about the internet acutally has to do with uncertainty about those attitudes. So fascinating! Also, I like your subtitle, as it makes it immediately obvious what your reponse categories mean. One suggestion might be to make the distributions different colors for double encoding of your different response categories, just to make them even more visually distinct. Love this graph! 
 ```
 
 ```{r plot 2}
@@ -134,6 +141,16 @@ ggplot(pew_yes, aes(platform))+
   coord_flip()+
   facet_wrap(~intfreq)
 
+#BC: Nice solution for creating proportions. I'm not familiar with that syntax, so I took a stab at reproducing the same graph using dplyr functions, which I think helps with readability (though not as concise as your fix!). Looks really similar to your data wrangling below :P
+pew_yes %>% 
+  group_by(intfreq, platform) %>% 
+  summarize(n = n()) %>% 
+  mutate(proportion = n / sum(n)) %>% 
+  ggplot(aes(platform, proportion)) + 
+  geom_col() + 
+  coord_flip() +
+  facet_wrap(~intfreq)
+  
 #right now our graph is calculating the percentage out of total responses, but often there are multiple responses per person. Instead we need to calculate a percentage out of total participants 
 
 #make new summary data set and join on unique count for each group
@@ -161,6 +178,8 @@ ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))
   theme_minimal()+
   theme(axis.title.y = element_blank(), legend.title = element_blank(), legend.position="none")+
   scale_fill_viridis_d() 
+
+#BC: As a poor colorblind soul, I very much appreciate your cb-friendly palette choice :) 
   
 
 #change something that looks closer to increasing order for both factors 
@@ -184,7 +203,7 @@ ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))
   geom_bar(stat="identity")+
   geom_text(aes(label=scales::percent(round(((n_ind)/group_n),2)),hjust=0))+
   coord_flip()+
-  facet_wrap(~intfreq, nrow=1)+
+  facet_wrap(~intfreq, nrow=1)+ #BC: I like the choice to make them fit all on one row. 
   scale_y_continuous(labels = scales::percent)+
   labs(title= "Percentage of Users on Platform by Frequency of Overall Internet Usage", y= "Percentage of Users")+
   theme_minimal()+
@@ -195,8 +214,10 @@ ggplot(freq_platform_ucount, aes(platform, y = ((n_ind)/group_n), fill=intfreq))
 
 #not sure if the text labels are very helpful here 
 
+#BC: I might leave the text labels out just to help reduce how "busy" the graph looks. You also might want to play with your aspect ratios, because some words seem to get cut off. Might have to do with the font sizes you chose? 
+
 #from this graph we can see that youtube and facebook are pretty dominant across all frequencies of general internet usage. For those who only use the internet once a day there is a surprisingly high percentage of pinterest users, suggesting it may serve a purpose independent of other social media platforms. 
-  
+
 ```
 
 ```{r plot 3}
@@ -219,7 +240,8 @@ ggplot(ind_count, aes(total_platform))+
   coord_flip()+
   scale_y_continuous(labels = scales::percent)+
   theme_minimal()
-  
+
+#BC: see suggestion above for how to do this with tidyverse functions.   
 
 #add titles and edit text size
 ggplot(ind_count, aes(total_platform))+
@@ -254,8 +276,10 @@ ggplot(ind_count, aes(total_platform, fill=intfreq))+
 #mean number of platforms engaged with by frequency of internet use, may want to incorporate this into the plot later
 mean_platform <- ind_count %>% 
   group_by(intfreq) %>% 
-  dplyr::summarize(mean_platform=mean(total_platform))
+  dplyr::summarize(mean_platform=mean(as.numeric(total_platform)))
 mean_platform
+
+#BC: Your `total_platform` variable was labeled as a factor, so taking the mean threw NA's for me. Added in `as.numeric()` so it would give you real numbers. Also, I would reorder the faceting variable here as you did in your last graph so it's in more of an intuitive order.
 ```
 
 ```{r plot 4}
@@ -300,11 +324,15 @@ waffle(waffle, rows = 11)
 waffle_p <- one_plat2 %>%
   ungroup() %>% 
   group_by(platform) %>% 
-  dplyr::summarize(n=n()/220*100) %>% 
+  dplyr::summarize(n=n()/nrow(.)*100) %>% 
   arrange(desc(n))
+
+#BC: I changed 220 to `nrow(.)` to increase reproducibility. Best to avoid hard-coding wherever possible. 
 
 #round to make 100 boxes
 waffle_pr <- waffle_p %>% mutate_if(is.numeric, round, 0)
+
+#BC: Cool use of `mutate_if()`! Thanks for teaching me this function. 
 
 #plot and add title 
 waffle(waffle_pr, rows = 10, title="Chosen Social Media for Single Platform Users")
@@ -320,6 +348,7 @@ fonts()[grep("Awesome", fonts())]
 
 waffle(waffle_pr, rows = 10, title="Chosen Social Media for Single Platform Users")
 
+#BC: This is probably my favorite plot! It's really visualizing appealing and intuitive. I definitely agree that it does a much better job than a bar graph, especially for communicating differences among platforms with fewer overall users. Amazing job! 
 ```
 
 
